@@ -223,7 +223,11 @@ object EclipseReplTest
   {
     val settings = new Init { override def toString = "Echopreter" }
     // just echo back each line of code as if that were the result
-    def interpret(e: String) = { print(e); Success }
+    def interpret(e: String) = {
+      print(e);
+
+      InterpreterResult(Success, None, List[(Option[(Int, Int)], String)]())
+    }
 
     def editOutput(es:Seq[Expect]) =
       replace(es,{
@@ -232,6 +236,7 @@ object EclipseReplTest
 
     override def steal(es:Seq[Expect]) =
       super.steal(editOutput(es))
+
   }
   object Failpreter extends Initialization with Interpreter
   {
@@ -288,7 +293,17 @@ object EclipseReplTest
       override def dropped(): Unit = {                            add(Dropped) }
       override def added(e:Exec): Unit = {                        add(Added(e)) }
       override def doing(e:Exec): Unit = {                        add(Doing(e)) }
-      override def done(e:Exec, r:Result, o:String): Unit = {     add(Done(e,r,o)) }
+
+      override def done(
+        exec: Exec,
+        result: Result,
+        outputText: String,
+        resultObjectOption: Option[Any],
+        warnings: List[(Option[(Int, Int)], String)]): Unit = {
+
+        add(Done(exec, result, outputText))
+      }
+
       override def terminating(): Unit = {                        add(Terminating) }
       override def failed(r:Any, t:Throwable, o:String): Unit = { add(Failed(r,t,o)) }
       override def unknown(m:Any): Unit = {                       add(Unknown(m)) }
