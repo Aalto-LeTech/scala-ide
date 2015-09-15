@@ -192,12 +192,12 @@ trait InterpreterConsoleView extends ViewPart {
 
     val resultObject = resultObjectOption.get
 
-    val providerSetOption = GlobalMetadataInterfaceSourceProviderRegistry.queryProvidersFor(resultObject)
-    if (providerSetOption == None)
+    val providerSet = GlobalMetadataInterfaceSourceProviderRegistry.queryProvidersFor(resultObject)
+    if (providerSet.isEmpty)
       return
 
     var metaInterfaceSourceOption: Option[Any] = None
-    providerSetOption.get.find { provider =>
+    providerSet.find { provider =>
       metaInterfaceSourceOption = provider.querySourceFor(resultObject)
       metaInterfaceSourceOption.isDefined
     }

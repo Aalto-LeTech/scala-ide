@@ -52,10 +52,10 @@ import org.scalaide.core.internal.compiler.ScalaPresentationCompiler
 
 class ReplConsoleView extends ViewPart with InterpreterConsoleView {
 
-  private var projectName: String = ""
-  private var scalaProject: IScalaProject = null
+  //private var projectName: String = ""
+  //private var scalaProject: IScalaProject = null
   private var isStopped = true
-  private var projectList: List = null
+  //private var projectList: List = null
   private var view = this // gets set to null when disposed
 
   private lazy val repl = new EclipseRepl(
@@ -172,6 +172,7 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
     }
   }
 
+  /*
   object refreshOnRebuildAction extends Action("Replay History on Project Rebuild", IAction.AS_CHECK_BOX) with Subscriber[IScalaProjectEvent, Publisher[IScalaProjectEvent]] {
     setToolTipText("Replay History on Project Rebuild")
 
@@ -194,40 +195,65 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
       }
     }
   }
+  */
 
   private def setStarted(): Unit = {
-    val settings = ScalaPresentationCompiler.defaultScalaSettings()
-    scalaProject.initializeCompilerSettings(settings, _ => true)
-    // TODO ? move into ScalaPlugin.getScalaProject or ScalaProject.classpath
-    var cp = settings.classpath.value
+    val scalaProjectNames = for {
+      project <- ResourcesPlugin.getWorkspace().getRoot().getProjects()
+      if project.isOpen && project.hasNature(org.eclipse.jdt.core.JavaCore.NATURE_ID)
+    } yield project.getName()
+
+    val classPathsOfProjects = scalaProjectNames.map { projectName =>
+      val scalaProject = IScalaPlugin().getScalaProject(ResourcesPlugin.getWorkspace().getRoot().getProject(projectName))
+
+      val settings = ScalaPresentationCompiler.defaultScalaSettings()
+      scalaProject.initializeCompilerSettings(settings, _ => true)
+
+      settings.classpath.value
+    }
+
+    var fullClassPath = ""
+    for {
+      singleClassPath <- classPathsOfProjects
+      singlePath <- singleClassPath.split(java.io.File.pathSeparator)
+      if !fullClassPath.contains(singlePath)
+    } fullClassPath = singlePath + java.io.File.pathSeparator + fullClassPath
+
     val extraJars = platformInstallation.extraJars
     val classJar = platformInstallation.library.classJar
     for {
       path <- extraJars.map(_.classJar) :+ classJar
       pathString = path.toOSString()
-      if !cp.contains(pathString)
-    } cp = pathString + java.io.File.pathSeparator + cp
+      if !fullClassPath.contains(pathString)
+    } fullClassPath = pathString + java.io.File.pathSeparator + fullClassPath
 
-    settings.classpath.value = cp
+    val settings: Settings = ScalaPresentationCompiler.defaultScalaSettings()
+    settings.classpath.value = fullClassPath
     settings.embeddedDefaults(getClass.getClassLoader)
-    // end to do ? move
+
+/*
+    resultsTextWidget.append("Classpath:\n")
+    fullClassPath.split(java.io.File.pathSeparator).foreach { path =>
+      resultsTextWidget.append(path + "\n")
+    }
+*/
+
     repl.init(settings)
     isStopped = false
 
     val preamble =
-        """import aalto.smcl._
-          |import aalto.smcl.common._
-          |import aalto.smcl.bitmaps._
-          |import aalto.smcl.bitmaps.immutable._
-          |import aalto.smcl.bitmaps.immutable.primitives._
-          |import aalto.smcl.bitmaps.immutable.collections._
-          |""".stripMargin
+          """import aalto.smcl._
+            |import aalto.smcl.infrastructure._
+            |import aalto.smcl.common._
+            |import aalto.smcl.colors._
+            |import aalto.smcl.bitmaps._""".stripMargin
 
     evaluate(preamble)
 
     stopReplAction.setEnabled(true)
 
-    setContentDescription("Scala Interpreter (Project: " + projectName + ")")
+    setContentDescription("Scala Interpreter  (Classpath includes both SMCL and all open projects)")
+    //setContentDescription("Scala Interpreter (Project: " + projectName + ")")
   }
 
   private def setStopped(): Unit = {
@@ -241,17 +267,18 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
 
   override def createPartControl(parent: Composite): Unit = {
     // if the view has no secondary id, display UI to choose a project
-    projectName = getViewSite.getSecondaryId
-    if (projectName == null) {
-      createProjectChooserPartControl(parent)
-    } else {
+    //projectName = getViewSite.getSecondaryId
+    //if (projectName == null) {
+    //  createProjectChooserPartControl(parent)
+    //} else {
       createInterpreterPartControl(parent)
-    }
+    //}
   }
 
   /**
    * Check if the delta is about a project availability change.
    */
+/*
   class ResourceDeltaVisitor extends IResourceDeltaVisitor {
     var isProjectChange = false
     override def visit(delta: IResourceDelta): Boolean = {
@@ -266,7 +293,9 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
       }
     }
   }
+*/
 
+/*
   /**
    * resource change listener to refresh the project list when
    * projects are opened or closed
@@ -284,10 +313,11 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
       }
     }
   }
-
+*/
   /**
    * Create the project chooser UI
    */
+/*
   def createProjectChooserPartControl(parent: Composite): Unit = {
     val panel = new Composite(parent, SWT.NONE)
     panel.setLayout(new GridLayout(1, false))
@@ -330,6 +360,7 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
     })
   }
 
+
   /**
    * Reset the project list to the current set of open projects
    */
@@ -340,6 +371,7 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
     } yield project.getName()
     projectList.setItems(scalaProjectNames)
   }
+*/
 
   /**
    * A project has been selected, close the current view and open the right one.
@@ -365,12 +397,13 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
     toolbarManager.add(new Separator)
     toolbarManager.add(clearConsoleAction)
     toolbarManager.add(new Separator)
-    toolbarManager.add(refreshOnRebuildAction)
+    //toolbarManager.add(refreshOnRebuildAction)
 
-    setPartName("Scala Interpreter (" + projectName + ")")
+    //setPartName("Scala Interpreter (" + projectName + ")")
+    setPartName("Scala Interpreter")
 
     // Register the interpreter for the project
-    scalaProject = IScalaPlugin().getScalaProject(ResourcesPlugin.getWorkspace().getRoot().getProject(projectName))
+    //scalaProject = IScalaPlugin().getScalaProject(ResourcesPlugin.getWorkspace().getRoot().getProject(projectName))
     stopReplAction.run()
     setStarted
   }
@@ -380,6 +413,7 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
   override def dispose(): Unit = {
     super.dispose()
     view = null
+/*
     if (projectName == null) {
       // elements of the project chooser view
       ResourcesPlugin.getWorkspace().removeResourceChangeListener(resourceChangeListener)
@@ -388,7 +422,10 @@ class ReplConsoleView extends ViewPart with InterpreterConsoleView {
 
       scalaProject.removeSubscription(refreshOnRebuildAction)
     }
+*/
+
   }
+
 }
 
 object ReplConsoleView {
